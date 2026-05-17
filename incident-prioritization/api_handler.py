@@ -42,12 +42,12 @@ def handler(event, context):
     logger.info(json.dumps({"operation": "Request", "traceId": trace_id, "method": http_method, "path": path}))
 
     try:
-        # GET /incidents
-        if http_method == "GET" and path == "/incidents":
+        # GET /incidents or /v1/incidents
+        if http_method == "GET" and path in ("/incidents", "/v1/incidents"):
             result = table.scan()
             return response(200, [format_incident(i) for i in result["Items"]], trace_id)
 
-        # GET /incidents/priority/{level}
+        # GET /incidents/priority/{level} or /v1/incidents/priority/{level}
         elif http_method == "GET" and "level" in path_params:
             level = path_params["level"].upper()
             result = table.scan(FilterExpression=Attr("priority").eq(level))
@@ -56,7 +56,7 @@ def handler(event, context):
                 return response(404, {"message": f"No incidents found with priority {level}"}, trace_id)
             return response(200, [format_incident(i) for i in items], trace_id)
 
-        # GET /incidents/{id}
+        # GET /incidents/{id} or /v1/incidents/{id}
         elif http_method == "GET" and "id" in path_params:
             incident_id = path_params["id"]
             result = table.get_item(Key={"incident_id": incident_id})

@@ -13,14 +13,6 @@ TABLE_NAME    = os.environ["DYNAMODB_TABLE"]
 SNS_TOPIC_ARN = os.environ["SNS_TOPIC_ARN"]
 RULE_VERSION  = os.environ.get("RULE_VERSION", "v1")
 
-DEFAULT_SEVERITY_BY_TYPE = {
-    "EARTHQUAKE": "HIGH",
-    "FIRE":       "HIGH",
-    "FLOOD":      "MEDIUM",
-    "STORM":      "MEDIUM",
-    "ACCIDENT":   "LOW",
-}
-
 DESCRIPTION_SUFFIX = {
     "CRITICAL": "สถานการณ์อยู่ในขั้นวิกฤต จำเป็นต้องระดมทรัพยากรและตอบสนองทันที",
     "HIGH":     "สถานการณ์รุนแรง จำเป็นต้องเร่งส่งทีมช่วยเหลือและแจ้งเตือนประชาชนในพื้นที่",
@@ -42,11 +34,12 @@ def handler(event, context):
             incident = json.loads(body["Message"]) if "Message" in body else body
             logger.info(json.dumps({"operation": "Received", "traceId": trace_id, "incident": incident}))
 
-            incident_id     = incident.get("incident_id")
-            incident_type   = incident.get("incident_type", "UNKNOWN")
-            raw_severity    = incident.get("severity")
-            severity        = raw_severity if raw_severity else DEFAULT_SEVERITY_BY_TYPE.get(incident_type.upper(), "MEDIUM")
+            incident_id     = incident.get("incident_id") or incident.get("incidentId")
+            incident_type   = incident.get("incident_type") or incident.get("incidentType", "UNKNOWN")
+            severity        = incident.get("severity")
             upstream_status = incident.get("status", "")
+            affected_count  = incident.get("affected_count")
+            address_name    = incident.get("address_name", "")
 
             if not incident_id:
                 logger.error(json.dumps({"operation": "MissingIncidentId", "traceId": trace_id}))
@@ -59,7 +52,10 @@ def handler(event, context):
                 continue
 
             verification_status = upstream_status.upper()
-            priority, decision_reason = calculate_priority(incident_type, severity)
+            priority, decision_reason = calculate_priority(
+                incident_type, severity, affected_count,
+                incident.get("description", ""), address_name
+            )
             now = datetime.now(timezone.utc).isoformat()
             base_desc = incident.get("description", "")
             enriched_description = build_description(base_desc, priority)

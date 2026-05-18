@@ -20,7 +20,6 @@ def format_incident(item):
         "verificationStatus": item.get("verificationStatus"),
         "classifiedAt":       item.get("classifiedAt"),
         "disaster_type":      item.get("disaster_type"),
-        "severity_level":     item.get("severity_level"),
         "decisionReason":     item.get("decisionReason"),
         "source":             item.get("source"),
         "ruleVersion":        item.get("ruleVersion"),
